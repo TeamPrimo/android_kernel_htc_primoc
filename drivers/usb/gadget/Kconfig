@@ -1209,6 +1209,14 @@ config USB_ANDROID_USBNET
 	default n
 	help
 
+config USB_G_ANDROID
+	boolean "Android Gadget"
+	depends on SWITCH
+	help
+	  The Android gadget driver supports multiple USB functions.
+	  The functions can be configured via a board file and may be
+	  enabled and disabled dynamically.
+
 config USB_CDC_COMPOSITE
 	tristate "CDC Composite Device (Ethernet and ACM)"
 	depends on NET

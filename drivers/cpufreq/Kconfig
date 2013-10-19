@@ -88,6 +88,7 @@ config CPU_FREQ_DEFAULT_GOV_ONDEMAND
 	  governor. If unsure have a look at the help section of the
 	  driver. Fallback governor will be the performance governor.
 
+
 config CPU_FREQ_DEFAULT_GOV_CONSERVATIVE
 	bool "conservative"
 	select CPU_FREQ_GOV_CONSERVATIVE
@@ -201,6 +202,49 @@ config CPU_FREQ_GOV_LIONHEART
 	help 
 	   'Use Lionheart' 
 
+config CPU_FREQ_GOV_SMARTMAX
+	tristate "'smartmax' cpufreq policy governor"
+	select CPU_FREQ_TABLE
+	help
+	  'smartmax' combined ondemand and smartass2
+
+config CPU_FREQ_GOV_SMARTMAX_TEGRA
+	bool "'smartmax' for tegra"
+	depends on CPU_FREQ_GOV_SMARTMAX
+
+config CPU_FREQ_GOV_SMARTMAX_30
+	bool "'smartmax' for 3.0 and 3.1 kernels"
+	depends on CPU_FREQ_GOV_SMARTMAX
+
+config CPU_FREQ_GOV_SMARTMAX_ENRC2B
+	bool "'smartmax' defaults for enrc2b"
+	depends on CPU_FREQ_GOV_SMARTMAX
+
+config CPU_FREQ_GOV_SMARTMAX_PRIMOU
+	bool "'smartmax' defaults for primou"
+	depends on CPU_FREQ_GOV_SMARTMAX
+
+config CPU_FREQ_GOV_SMARTMAX_M7
+	bool "'smartmax' defaults for m7"
+	depends on CPU_FREQ_GOV_SMARTMAX
+
+config CPU_FREQ_GOV_INTERACTIVE
+	tristate "'interactive' cpufreq policy governor"
+	help
+	  'interactive' - This driver adds a dynamic cpufreq policy governor
+	  designed for latency-sensitive workloads.
+
+	  This governor attempts to reduce the latency of clock
+	  increases so that the system is more responsive to
+	  interactive workloads.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_interactive.
+
+	  For details, take a look at linux/Documentation/cpu-freq.
+
+	  If in doubt, say N.
+
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
 	depends on CPU_FREQ
@@ -223,6 +267,22 @@ config CPU_FREQ_GOV_CONSERVATIVE
 	  For details, take a look at linux/Documentation/cpu-freq.
 
 	  If in doubt, say N.
+
+config CPU_FREQ_GOV_LULZACTIVE
+	tristate "'lulzactive' cpufreq governor"
+	depends on CPU_FREQ
+	help
+	  'lulzactive' - a new interactive governor by Tegrak!
+
+	  If in doubt, say N.
+
+config CPU_FREQ_VDD_LEVELS
+  	bool "CPU Vdd levels sysfs interface"
+  	depends on CPU_FREQ_STAT
+  	depends on ARCH_MSM7X30
+  	default n
+ 	help
+    	CPU Vdd levels sysfs interface
 
 config CPU_FREQ_MIN_TICKS
 	int "Ticks between governor polling interval."

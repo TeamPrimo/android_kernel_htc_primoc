@@ -675,52 +675,51 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 
 
 /* Compact all zones within a node */
+/* Compact all zones within a node */
 static int compact_node(int nid)
 {
-	int zoneid;
-	pg_data_t *pgdat;
-	struct zone *zone;
+        int zoneid;
+        pg_data_t *pgdat;
+        struct zone *zone;
 
-	if (nid < 0 || nid >= nr_node_ids || !node_online(nid))
-		return -EINVAL;
-	pgdat = NODE_DATA(nid);
+        if (nid < 0 || nid >= nr_node_ids || !node_online(nid))
+                return -EINVAL;
+        pgdat = NODE_DATA(nid);
 
-	/* Flush pending updates to the LRU lists */
-	lru_add_drain_all();
+        /* Flush pending updates to the LRU lists */
+        lru_add_drain_all();
 
-	for (zoneid = 0; zoneid < MAX_NR_ZONES; zoneid++) {
-		struct compact_control cc = {
-			.nr_freepages = 0,
-			.nr_migratepages = 0,
-			.order = -1,
-		};
+        for (zoneid = 0; zoneid < MAX_NR_ZONES; zoneid++) {
+                struct compact_control cc = {
+                        .nr_freepages = 0,
+                        .nr_migratepages = 0,
+                        .order = -1,
+                };
 
-		zone = &pgdat->node_zones[zoneid];
-		if (!populated_zone(zone))
-			continue;
+                zone = &pgdat->node_zones[zoneid];
+                if (!populated_zone(zone))
+                        continue;
 
-		cc.zone = zone;
-		INIT_LIST_HEAD(&cc.freepages);
-		INIT_LIST_HEAD(&cc.migratepages);
+                cc.zone = zone;
+                INIT_LIST_HEAD(&cc.freepages);
+                INIT_LIST_HEAD(&cc.migratepages);
 
-		compact_zone(zone, &cc);
+                compact_zone(zone, &cc);
 
-		VM_BUG_ON(!list_empty(&cc.freepages));
-		VM_BUG_ON(!list_empty(&cc.migratepages));
-	}
+                VM_BUG_ON(!list_empty(&cc.freepages));
+                VM_BUG_ON(!list_empty(&cc.migratepages));
+        }
 
-	return 0;
+        return 0;
 }
 
 /* Compact all nodes in the system */
-static int compact_nodes(void)
+static void compact_nodes(void)
 {
 	int nid;
 
 	for_each_online_node(nid)
 		compact_node(nid);
-
-	return COMPACT_COMPLETE;
 }
 
 /* The written value is actually unused, all memory is compacted */
@@ -731,7 +730,7 @@ int sysctl_compaction_handler(struct ctl_table *table, int write,
 			void __user *buffer, size_t *length, loff_t *ppos)
 {
 	if (write)
-		return compact_nodes();
+		compact_nodes();
 
 	return 0;
 }

@@ -167,8 +167,14 @@ DECLARE_EVENT_CLASS(writeback_congest_waited_template,
 	),
 
 	TP_fast_assign(
-		__entry->usec_timeout	= usec_timeout;
-		__entry->usec_delayed	= usec_delayed;
+		strlcpy(__entry->bdi, dev_name(bdi->dev), 32);
+		__entry->write_bw	= KBps(bdi->write_bandwidth);
+		__entry->avg_write_bw	= KBps(bdi->avg_write_bandwidth);
+		__entry->dirty_rate	= KBps(dirty_rate);
+		__entry->dirty_ratelimit = KBps(bdi->dirty_ratelimit);
+		__entry->task_ratelimit	= KBps(task_ratelimit);
+		__entry->balanced_dirty_ratelimit =
+					  KBps(bdi->balanced_dirty_ratelimit);
 	),
 
 	TP_printk("usec_timeout=%u usec_delayed=%u",

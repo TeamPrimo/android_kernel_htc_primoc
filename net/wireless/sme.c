@@ -559,8 +559,10 @@ void __cfg80211_roamed(struct wireless_dev *wdev,
 		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
+#ifndef CONFIG_CFG80211_ALLOW_RECONNECT
 	if (wdev->sme_state != CFG80211_SME_CONNECTED)
 		return;
+#endif
 
 	/* internal error -- how did we get to CONNECTED w/o BSS? */
 	if (WARN_ON(!wdev->current_bss)) {

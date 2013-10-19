@@ -452,9 +452,8 @@ int ip6_forward(struct sk_buff *skb)
 	}
 
 	/* XXX: idev->cnf.proxy_ndp? */
-	if ((net->ipv6.devconf_all->proxy_ndp == 1 &&
-	    pneigh_lookup(&nd_tbl, net, &hdr->daddr, skb->dev, 0))
-	    || net->ipv6.devconf_all->proxy_ndp >= 2) {
+	if (net->ipv6.devconf_all->proxy_ndp &&
+	    pneigh_lookup(&nd_tbl, net, &hdr->daddr, skb->dev, 0)) {
 		int proxied = ip6_forward_proxy_check(skb);
 		if (proxied > 0)
 			return ip6_input(skb);
@@ -926,11 +925,17 @@ static struct dst_entry *ip6_sk_dst_check(struct sock *sk,
 					  const struct flowi6 *fl6)
 {
 	struct ipv6_pinfo *np = inet6_sk(sk);
-	struct rt6_info *rt = (struct rt6_info *)dst;
+	struct rt6_info *rt;
 
 	if (!dst)
 		goto out;
 
+	if (dst->ops->family != AF_INET6) {
+		dst_release(dst);
+		return NULL;
+	}
+
+	rt = (struct rt6_info *)dst;
 	/* Yes, checking route validity in not connected
 	 * case is not very simple. Take into account,
 	 * that we do not support routing by source, TOS,
@@ -1233,12 +1238,7 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 	int hh_len;
 	int mtu;
 	int copy;
-
-#ifdef CONFIG_HTC_NETWORK_MODIFY
-	int err = 0;
-#else
 	int err;
-#endif
 	int offset = 0;
 	int csummode = CHECKSUM_NONE;
 	__u8 tx_flags = 0;
@@ -1254,7 +1254,7 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 			if (WARN_ON(np->cork.opt))
 				return -EINVAL;
 
-			np->cork.opt = kmalloc(opt->tot_len, sk->sk_allocation);
+			np->cork.opt = kzalloc(opt->tot_len, sk->sk_allocation);
 			if (unlikely(np->cork.opt == NULL))
 				return -ENOBUFS;
 
