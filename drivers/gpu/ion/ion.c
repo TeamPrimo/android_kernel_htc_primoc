@@ -2,7 +2,7 @@
  * drivers/gpu/ion/ion.c
  *
  * Copyright (C) 2011 Google, Inc.
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -232,6 +232,7 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 	}
 	buffer->dev = dev;
 	buffer->size = len;
+	buffer->flags = flags;
 	mutex_init(&buffer->lock);
 	ion_buffer_add(dev, buffer);
 	return buffer;
@@ -1207,7 +1208,12 @@ int ion_handle_get_flags(struct ion_client *client, struct ion_handle *handle,
 	}
 	buffer = handle->buffer;
 	mutex_lock(&buffer->lock);
-	*flags = buffer->flags;
+	/*
+	 * Make sure we only return FLAGS. buffer->flags also holds
+	 * the heap_mask, so we need to make sure we're only looking
+	 * at the supported Ion flags.
+	 */
+	*flags = buffer->flags & (ION_FLAG_CACHED | ION_SECURE);
 	mutex_unlock(&buffer->lock);
 	mutex_unlock(&client->lock);
 
@@ -1322,10 +1328,7 @@ static int ion_share_mmap(struct file *file, struct vm_area_struct *vma)
 	struct ion_client *client;
 	struct ion_handle *handle;
 	int ret;
-	unsigned long flags = file->f_flags & O_DSYNC ?
-				ION_SET_CACHE(UNCACHED) :
-				ION_SET_CACHE(CACHED);
-
+	unsigned long flags = buffer->flags;
 
 	pr_debug("%s: %d\n", __func__, __LINE__);
 	/* make sure the client still exists, it's possible for the client to
@@ -1449,6 +1452,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
 			return -EFAULT;
+		data.flags |= data.heap_mask;
 		data.handle = ion_alloc(client, data.len, data.align,
 					     data.flags);
 
@@ -1525,61 +1529,8 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_CLEAN_CACHES:
 	case ION_IOC_INV_CACHES:
 	case ION_IOC_CLEAN_INV_CACHES:
-	{
-		struct ion_flush_data data;
-		unsigned long start, end;
-		struct ion_handle *handle = NULL;
-		int ret;
-
-		if (copy_from_user(&data, (void __user *)arg,
-				sizeof(struct ion_flush_data)))
-			return -EFAULT;
-
-		start = (unsigned long) data.vaddr;
-		end = (unsigned long) data.vaddr + data.length;
-
-		if (check_vaddr_bounds(start, end)) {
-			pr_err("%s: virtual address %p is out of bounds\n",
-				__func__, data.vaddr);
-			return -EINVAL;
-		}
-
-		if (!data.handle) {
-			handle = ion_import_fd(client, data.fd);
-			if (IS_ERR_OR_NULL(handle)) {
-				pr_info("%s: Could not import handle: %d\n",
-					__func__, (int)handle);
-				return -EINVAL;
-			}
-		}
-
-		ret = ion_do_cache_op(client,
-					data.handle ? data.handle : handle,
-					data.vaddr, data.offset, data.length,
-					cmd);
-
-		if (!data.handle)
-			ion_free(client, handle);
-
-		break;
-
-	}
 	case ION_IOC_GET_FLAGS:
-	{
-		struct ion_flag_data data;
-		int ret;
-		if (copy_from_user(&data, (void __user *)arg,
-				   sizeof(struct ion_flag_data)))
-			return -EFAULT;
-
-		ret = ion_handle_get_flags(client, data.handle, &data.flags);
-		if (ret < 0)
-			return ret;
-		if (copy_to_user((void __user *)arg, &data,
-				 sizeof(struct ion_flag_data)))
-			return -EFAULT;
-		break;
-	}
+		return client->dev->custom_ioctl(client, cmd, arg);
 	default:
 		return -ENOTTY;
 	}
