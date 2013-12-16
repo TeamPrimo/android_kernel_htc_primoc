@@ -18,6 +18,9 @@
 #include <linux/delay.h>
 #include <linux/bootmem.h>
 #include <linux/io.h>
+#ifdef CONFIG_ION_MSM
+#include <linux/ion.h>
+#endif
 #ifdef CONFIG_SPI_QSD
 #include <linux/spi/spi.h>
 #endif
@@ -171,6 +174,11 @@ unsigned int primoc_get_engineerid(void)
 		(((pull) & 0x3) << 15)          | \
 		(((drvstr) & 0xF) << 17))
 
+#ifdef CONFIG_ION_MSM
+static struct platform_device ion_dev;
+#define MSM_ION_HEAP_NUM  2
+#define MSM_ION_SF_SIZE    MSM_PMEM_SF_SIZE
+#endif
 static void config_gpio_table(uint32_t *table, int len)
 {
 	int n, rc;
@@ -3861,6 +3869,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&msm_ebi0_thermal,
 	&msm_ebi1_thermal,
+#ifdef CONFIG_ION_MSM
+	&ion_dev,
+#endif
 #ifdef CONFIG_SERIAL_BCM_BT_LPM
        &bcm_bt_lpm_device,
 #endif
@@ -5436,6 +5447,47 @@ static int __init pmem_adsp_size_setup(char *p)
 }
 early_param("pmem_adsp_size", pmem_adsp_size_setup);
 
+#ifdef CONFIG_ION_MSM
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+static struct ion_co_heap_pdata co_ion_pdata = {
+  .adjacent_mem_id = INVALID_HEAP_ID,
+  .align = PAGE_SIZE,
+};
+#endif
+
+/**
+ * These heaps are listed in the order they will be allocated.
+ * Don't swap the order unless you know what you are doing!
+ */
+static struct ion_platform_data ion_pdata = {
+  .nr = MSM_ION_HEAP_NUM,
+  .heaps = {
+    {
+	  .id  = ION_SYSTEM_HEAP_ID,
+      .type  = ION_HEAP_TYPE_SYSTEM,
+      .name  = ION_VMALLOC_HEAP_NAME,
+    },
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+    /* PMEM_MDP = SF */
+    {
+      .id  = ION_SF_HEAP_ID,
+      .type  = ION_HEAP_TYPE_CARVEOUT,
+      .name  = ION_SF_HEAP_NAME,
+      .memory_type = ION_EBI_TYPE,
+      .has_outer_cache = 1,
+      .extra_data = (void *)&co_ion_pdata,
+    },
+#endif
+  }
+};
+
+static struct platform_device ion_dev = {
+  .name = "ion-msm",
+  .id = 1,
+  .dev = { .platform_data = &ion_pdata },
+};
+#endif
+
 static unsigned pmem_adsp2_size = MSM_PMEM_ADSP2_SIZE;
 static int __init pmem_adsp2_size_setup(char *p)
 {
@@ -5469,15 +5521,21 @@ static void __init size_pmem_devices(void)
 	android_pmem_adsp_pdata.size = pmem_adsp_size;
 	android_pmem_adsp2_pdata.size = pmem_adsp2_size;
 	android_pmem_audio_pdata.size = pmem_audio_size;
+#ifndef CONFIG_ION_MSM
 	android_pmem_pdata.size = pmem_sf_size;
+#endif
 #endif
 }
 
+#ifdef CONFIG_ANDROID_PMEM
 static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 {
-	pr_info("%s: reserve %lu bytes from memory %d for %s.\n", __func__, p->size, p->memory_type, p->name);
-	msm7x30_reserve_table[p->memory_type].size += p->size;
+	if (p->size > 0) {
+    pr_info("%s: reserve %lu bytes from memory %d for %s.\n", __func__, p->size, p->memory_type, p->name);
+    msm7x30_reserve_table[p->memory_type].size += p->size;
+  }
 }
+#endif
 
 static void __init reserve_pmem_memory(void)
 {
@@ -5490,10 +5548,26 @@ static void __init reserve_pmem_memory(void)
 #endif
 }
 
+static void __init size_ion_devices(void)
+{
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+  ion_pdata.heaps[1].size = MSM_ION_SF_SIZE;
+#endif
+}
+
+static void __init reserve_ion_memory(void)
+{
+#ifdef CONFIG_ION_MSM
+  msm7x30_reserve_table[MEMTYPE_EBI0].size += MSM_ION_SF_SIZE;
+#endif
+}
+
 static void __init msm7x30_calculate_reserve_sizes(void)
 {
 	size_pmem_devices();
 	reserve_pmem_memory();
+	size_ion_devices();
+	reserve_ion_memory();
 }
 
 static int msm7x30_paddr_to_memtype(unsigned int paddr)
