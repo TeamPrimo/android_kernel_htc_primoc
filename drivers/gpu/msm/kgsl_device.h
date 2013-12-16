@@ -106,11 +106,6 @@ struct kgsl_functable {
 		struct kgsl_context *context);
 	long (*ioctl) (struct kgsl_device_private *dev_priv,
 		unsigned int cmd, void *data);
-<<<<<<< HEAD
-=======
-	int (*next_event)(struct kgsl_device *device,
-		struct kgsl_event *event);
->>>>>>> d0214a4... msm: kgsl: Prevent missing servicing of events waiting on timestamps
 };
 
 struct kgsl_memregion {
