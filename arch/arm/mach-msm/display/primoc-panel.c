@@ -1098,6 +1098,9 @@ int __init primoc_init_panel(void)
 		return PTR_ERR(axi_clk);
 	}
 
+	resources_msm_fb[0].start = msm_fb_base;
+	resources_msm_fb[0].end = msm_fb_base + MSM_FB_SIZE - 1;
+	
 	msm_device_mddi0.dev.platform_data = &mddi_pdata;
 	rc = platform_device_register(&msm_device_mddi0);
 	if (rc)
