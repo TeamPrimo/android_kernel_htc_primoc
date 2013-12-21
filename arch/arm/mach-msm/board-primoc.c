@@ -18,9 +18,6 @@
 #include <linux/delay.h>
 #include <linux/bootmem.h>
 #include <linux/io.h>
-#ifdef CONFIG_ION_MSM
-#include <linux/ion.h>
-#endif
 #ifdef CONFIG_SPI_QSD
 #include <linux/spi/spi.h>
 #endif
@@ -117,6 +114,11 @@
 #include <mach/htc_bdaddress.h>
 #endif
 
+#ifdef CONFIG_ION_MSM
+#include <linux/ion.h>
+#include <mach/ion.h>
+#endif
+
 #ifdef CONFIG_SERIAL_BCM_BT_LPM
 #include <mach/bcm_bt_lpm.h>
 #endif
@@ -146,6 +148,13 @@ int htc_get_usb_accessory_adc_level(uint32_t *buffer);
 
 #define FPGA_SDCC_STATUS       0x8E0001A8
 
+#ifdef CONFIG_ION_MSM
+static struct platform_device ion_dev;
+#define MSM_ION_HEAP_NUM       2
+#define MSM_ION_SF_SIZE        MSM_PMEM_SF_SIZE
+#endif
+
+
 int __init primoc_init_panel(void);
 static void headset_device_register(void);
 
@@ -174,11 +183,6 @@ unsigned int primoc_get_engineerid(void)
 		(((pull) & 0x3) << 15)          | \
 		(((drvstr) & 0xF) << 17))
 
-#ifdef CONFIG_ION_MSM
-static struct platform_device ion_dev;
-#define MSM_ION_HEAP_NUM  2
-#define MSM_ION_SF_SIZE    MSM_PMEM_SF_SIZE
-#endif
 static void config_gpio_table(uint32_t *table, int len)
 {
 	int n, rc;
@@ -3227,33 +3231,20 @@ static struct android_pmem_platform_data android_pmem_adsp_pdata = {
        .name = "pmem_adsp",
        .allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
        .cached = 1,
-	.memory_type = MEMTYPE_EBI0,
-};
-
-static struct android_pmem_platform_data android_pmem_adsp2_pdata = {
-	.name = "pmem_adsp2",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 0,
-	.memory_type = MEMTYPE_EBI0,
+        .memory_type = MEMTYPE_EBI0,
 };
 
 static struct android_pmem_platform_data android_pmem_audio_pdata = {
        .name = "pmem_audio",
        .allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
        .cached = 0,
-	.memory_type = MEMTYPE_EBI0,
+        .memory_type = MEMTYPE_EBI0,
 };
 
 static struct platform_device android_pmem_adsp_device = {
        .name = "android_pmem",
        .id = 2,
        .dev = { .platform_data = &android_pmem_adsp_pdata },
-};
-
-static struct platform_device android_pmem_adsp2_device = {
-	.name = "android_pmem",
-	.id = 3,
-	.dev = { .platform_data = &android_pmem_adsp2_pdata },
 };
 
 static struct platform_device android_pmem_audio_device = {
@@ -3811,7 +3802,6 @@ static struct platform_device *devices[] __initdata = {
 	&msm_rotator_device,
 #endif
 	&android_pmem_adsp_device,
-	&android_pmem_adsp2_device,
 	&android_pmem_audio_device,
 	&msm_device_i2c,
 	&msm_device_i2c_2,
@@ -5463,7 +5453,7 @@ static struct ion_platform_data ion_pdata = {
   .nr = MSM_ION_HEAP_NUM,
   .heaps = {
     {
-	  .id  = ION_SYSTEM_HEAP_ID,
+      .id  = ION_SYSTEM_HEAP_ID,
       .type  = ION_HEAP_TYPE_SYSTEM,
       .name  = ION_VMALLOC_HEAP_NAME,
     },
@@ -5487,14 +5477,6 @@ static struct platform_device ion_dev = {
   .dev = { .platform_data = &ion_pdata },
 };
 #endif
-
-static unsigned pmem_adsp2_size = MSM_PMEM_ADSP2_SIZE;
-static int __init pmem_adsp2_size_setup(char *p)
-{
-	pmem_adsp2_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_adsp2_size", pmem_adsp2_size_setup);
 
 static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
 static int __init pmem_audio_size_setup(char *p)
@@ -5527,7 +5509,6 @@ static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	android_pmem_adsp_pdata.size = pmem_adsp_size;
-	android_pmem_adsp2_pdata.size = pmem_adsp2_size;
 	android_pmem_audio_pdata.size = pmem_audio_size;
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	android_pmem_pdata.size = pmem_sf_size;
@@ -5548,12 +5529,11 @@ static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 static void __init reserve_pmem_memory(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
-	reserve_memory_for(&android_pmem_adsp_pdata);
-	      msm7x30_reserve_table[MEMTYPE_EBI0].size += PMEM_KERNEL_EBI0_SIZE;
-	reserve_memory_for(&android_pmem_adsp2_pdata);
-	reserve_memory_for(&android_pmem_audio_pdata);
+        reserve_memory_for(&android_pmem_adsp_pdata);
+        reserve_memory_for(&android_pmem_audio_pdata);
+	msm7x30_reserve_table[MEMTYPE_EBI0].size += PMEM_KERNEL_EBI0_SIZE;
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
-	reserve_memory_for(&android_pmem_pdata);
+        reserve_memory_for(&android_pmem_pdata);
 #endif
 #endif
 }
