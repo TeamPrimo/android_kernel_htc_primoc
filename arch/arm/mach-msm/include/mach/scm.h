@@ -24,26 +24,6 @@
 #define SCM_SVC_CP			0xC
 #define SCM_SVC_DCVS			0xD
 #define SCM_SVC_TZSCHEDULER		0xFC
-#define SCM_SVC_OEM				0xFE
-
-#define TZ_HTC_SVC_READ_SIMLOCK_MASK	0x0D
-#define TZ_HTC_SVC_SIMLOCK_UNLOCK		0x0E
-#define TZ_HTC_SVC_GET_SECURITY_LEVEL	0x10
-#define TZ_HTC_SVC_MEMPROT				0x15
-#define TZ_HTC_SVC_LOG_OPERATOR			0x16
-#define TZ_HTC_SVC_ACCESS_ITEM			0x1A
-
-#define ITEM_MDM9K_SERIAL		0
-#define ITEM_CRYPTO_RAMDUMP		1
-#define ITEM_ENCRYPT_RAMDUMP	3
-
-#define ITEM_KEYBOX_PROVISION	0x11
-#define ITEM_KEYBOX_DATA		0x21
-#define ITEM_DEVICE_ID			0x22
-#define ITEM_RAND_DATA			0x23
-#define ITEM_VALIDATE_KEYBOX	0x26
-#define ITEM_SDKEY_ENC          0x33
-#define ITEM_SDKEY_DEC          0x34
 
 #ifdef CONFIG_MSM_SCM
 extern int scm_call(u32 svc_id, u32 cmd_id, const void *cmd_buf, size_t cmd_len,
