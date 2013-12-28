@@ -286,6 +286,19 @@ kgsl_destroy_context(struct kgsl_device_private *dev_priv,
 	idr_remove(&dev_priv->device->context_idr, id);
 }
 
+static inline int _mark_next_event(struct kgsl_device *device,
+                struct list_head *head)
+{
+        struct kgsl_event *event;
+
+        if (!list_empty(head)) {
+                event = list_first_entry(head, struct kgsl_event, list);
+                if (device->ftbl->next_event)
+                        return device->ftbl->next_event(device, event);
+        }
+        return 0;
+}
+
 static void kgsl_timestamp_expired(struct work_struct *work)
 {
 	struct kgsl_device *device = container_of(work, struct kgsl_device,
@@ -295,6 +308,7 @@ static void kgsl_timestamp_expired(struct work_struct *work)
 
 	mutex_lock(&device->mutex);
 
+        while (1) {
 	/* get current EOP timestamp */
 	ts_processed = device->ftbl->readtimestamp(device,
 		KGSL_TIMESTAMP_RETIRED);
@@ -310,7 +324,16 @@ static void kgsl_timestamp_expired(struct work_struct *work)
 		list_del(&event->list);
 		kfree(event);
 	}
-
+               /*
+                 * Keep looping until we hit an event which has not
+                 * passed and then we write a dummy interrupt.
+                 * mark_next_event will return 1 for every event
+                 * that has passed and return 0 for the event which has not
+                 * passed yet.
+                 */
+                if (_mark_next_event(device, &device->events) == 0)
+                        break;
+        }
 	mutex_unlock(&device->mutex);
 }
 
